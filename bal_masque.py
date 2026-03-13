@@ -15,23 +15,25 @@ from PIL.ExifTags import TAGS, GPSTAGS
 from pathlib import Path
 import numpy as np
 import webbrowser
-import ctypes
 import sys
 import os
 from datetime import datetime
 import struct
 import re
 import shutil
+import platform
 
 
 def enable_high_dpi():
     if sys.platform == 'win32':
         try:
+            import ctypes
             ctypes.windll.shcore.SetProcessDpiAwareness(2)
-        except:
+        except Exception:
             try:
+                import ctypes
                 ctypes.windll.user32.SetProcessDPIAware()
-            except:
+            except Exception:
                 pass
 
 
@@ -92,6 +94,8 @@ class MetadataManager:
         'GPSLatitude': '🌍 Latitude',
         'GPSLongitude': '🌍 Longitude',
         'GPSAltitude': '🌍 Altitude',
+        'GPSTimeStamp': '🌍 Heure GPS',
+        'GPSDateStamp': '🌍 Date GPS',
         'DateTime': '📅 Date/Heure',
         'DateTimeOriginal': '📅 Date originale',
         'DateTimeDigitized': '📅 Date numérisation',
@@ -104,6 +108,14 @@ class MetadataManager:
         'ImageUniqueID': '🔢 ID unique',
         'BodySerialNumber': '🔢 N° série',
         'LensSerialNumber': '🔢 N° série objectif',
+        'LensModel': '📷 Modèle objectif',
+        'LensMake': '📷 Fabricant objectif',
+        'CameraSerialNumber': '🔢 N° série caméra',
+        'ImageDescription': '📝 Description',
+        'UserComment': '📝 Commentaire',
+        'XPAuthor': '👤 Auteur XP',
+        'XPComment': '📝 Commentaire XP',
+        'XPKeywords': '🏷️ Mots-clés XP',
     }
     
     @staticmethod
@@ -128,40 +140,43 @@ class MetadataManager:
             }
             
             img = Image.open(image_path)
-            result['file_info']['Format'] = img.format
-            result['file_info']['Dimensions'] = f"{img.size[0]}x{img.size[1]}"
-            result['file_info']['Mode'] = img.mode
-            
-            exif_data = img._getexif()
-            if exif_data:
-                for tag_id, value in exif_data.items():
-                    tag_name = TAGS.get(tag_id, str(tag_id))
-                    
-                    if tag_name == 'GPSInfo' and isinstance(value, dict):
-                        gps_data = {}
-                        for gps_tag_id, gps_value in value.items():
-                            gps_tag_name = GPSTAGS.get(gps_tag_id, str(gps_tag_id))
-                            gps_data[gps_tag_name] = gps_value
+            try:
+                result['file_info']['Format'] = img.format
+                result['file_info']['Dimensions'] = f"{img.size[0]}x{img.size[1]}"
+                result['file_info']['Mode'] = img.mode
+                
+                exif_data = img._getexif()
+                if exif_data:
+                    for tag_id, value in exif_data.items():
+                        tag_name = TAGS.get(tag_id, str(tag_id))
                         
-                        coords = MetadataManager._extract_gps_coords(gps_data)
-                        if coords:
-                            result['gps'] = coords
-                            result['risk_score'] += 40
-                    
-                    try:
-                        if isinstance(value, bytes):
-                            value = value.decode('utf-8', errors='replace')[:100]
-                        result['all_tags'][tag_name] = str(value)[:200]
-                    except:
-                        result['all_tags'][tag_name] = "[Binaire]"
-                    
-                    if tag_name in MetadataManager.SENSITIVE_TAGS:
-                        result['sensibles'].append({
-                            'tag': tag_name,
-                            'label': MetadataManager.SENSITIVE_TAGS[tag_name],
-                            'value': str(value)[:100]
-                        })
-                        result['risk_score'] += 10
+                        if tag_name == 'GPSInfo' and isinstance(value, dict):
+                            gps_data = {}
+                            for gps_tag_id, gps_value in value.items():
+                                gps_tag_name = GPSTAGS.get(gps_tag_id, str(gps_tag_id))
+                                gps_data[gps_tag_name] = gps_value
+                            
+                            coords = MetadataManager._extract_gps_coords(gps_data)
+                            if coords:
+                                result['gps'] = coords
+                                result['risk_score'] += 40
+                        
+                        try:
+                            if isinstance(value, bytes):
+                                value = value.decode('utf-8', errors='replace')[:100]
+                            result['all_tags'][tag_name] = str(value)[:200]
+                        except:
+                            result['all_tags'][tag_name] = "[Binaire]"
+                        
+                        if tag_name in MetadataManager.SENSITIVE_TAGS:
+                            result['sensibles'].append({
+                                'tag': tag_name,
+                                'label': MetadataManager.SENSITIVE_TAGS[tag_name],
+                                'value': str(value)[:100]
+                            })
+                            result['risk_score'] += 10
+            finally:
+                img.close()
             
             with open(image_path, 'rb') as f:
                 binary_data = f.read()
@@ -179,6 +194,16 @@ class MetadataManager:
             if b'\xff\xd8\xff' in binary_data[20:]:
                 result['hidden_data'].append("🖼️ Miniature EXIF embarquée détectée")
                 result['risk_score'] += 20
+            
+            # Détecter les métadonnées XMP embarquées
+            if b'<x:xmpmeta' in binary_data or b'xmlns:xmp' in binary_data:
+                result['hidden_data'].append("📦 Métadonnées XMP embarquées détectées")
+                result['risk_score'] += 15
+            
+            # Détecter les profils ICC (peuvent contenir des identifiants)
+            if b'ICC_PROFILE' in binary_data:
+                result['hidden_data'].append("🎨 Profil ICC embarqué détecté")
+                result['risk_score'] += 5
             
             result['risk_score'] = min(100, result['risk_score'])
             
@@ -222,15 +247,26 @@ class MetadataManager:
                 output_path = image_path
             
             img = Image.open(image_path)
+            
+            # Supprimer le profil ICC et toute info auxiliaire
+            if 'icc_profile' in img.info:
+                del img.info['icc_profile']
+            
+            # Créer une image propre sans aucune métadonnée
             clean_img = Image.new(img.mode, img.size)
-            clean_img.putdata(list(img.getdata()))
+            if hasattr(img, 'get_flattened_data'):
+                clean_img.putdata(list(img.get_flattened_data()))
+            else:
+                clean_img.putdata(list(img.getdata()))
             
             ext = Path(output_path).suffix.lower()
             
             if ext in ['.jpg', '.jpeg']:
-                clean_img.save(output_path, 'JPEG', quality=95, exif=b'')
+                clean_img.save(output_path, 'JPEG', quality=95, exif=b'', optimize=True)
             elif ext == '.png':
-                clean_img.save(output_path, 'PNG')
+                # PNG: sauvegarder sans aucune métadonnée
+                from PIL.PngImagePlugin import PngInfo
+                clean_img.save(output_path, 'PNG', pnginfo=PngInfo())
             elif ext == '.webp':
                 clean_img.save(output_path, 'WEBP', quality=95, exif=b'')
             else:
@@ -256,24 +292,38 @@ class MetadataManager:
             with open(filepath, 'rb') as f:
                 data = f.read()
             
-            for marker in [b'\xff\xe1', b'\xff\xed', b'\xff\xfe']:
+            # Supprimer tous les segments APP contenant des métadonnées :
+            # APP1 (EXIF/XMP), APP2 (ICC), APP12 (Ducky), APP13 (Photoshop/IPTC),
+            # APP14 (Adobe), COM (commentaires)
+            markers = [
+                b'\xff\xe1',  # APP1 - EXIF, XMP
+                b'\xff\xe2',  # APP2 - ICC Profile
+                b'\xff\xec',  # APP12 - Ducky
+                b'\xff\xed',  # APP13 - Photoshop/IPTC
+                b'\xff\xee',  # APP14 - Adobe
+                b'\xff\xfe',  # COM - Commentaires
+            ]
+            
+            for marker in markers:
                 while marker in data:
                     idx = data.find(marker)
                     if idx == -1:
+                        break
+                    if idx + 4 > len(data):
                         break
                     length = struct.unpack('>H', data[idx+2:idx+4])[0]
                     data = data[:idx] + data[idx+2+length:]
             
             with open(filepath, 'wb') as f:
                 f.write(data)
-        except:
+        except Exception:
             pass
 
 
 class BalMasque:
     """Application principale"""
     
-    VERSION = "2.0"
+    VERSION = "2.1"
     
     def __init__(self):
         # D'abord le disclaimer
@@ -285,12 +335,25 @@ class BalMasque:
         self.root.title("🎭 Bal Masqué")
         self.root.configure(bg=Style.BG)
         
-        # Plein écran
-        self.root.state('zoomed')  # Windows
-        try:
-            self.root.attributes('-zoomed', True)  # Linux
-        except:
-            pass
+        # Plein écran (cross-platform)
+        if sys.platform == 'win32':
+            self.root.state('zoomed')
+        elif sys.platform == 'darwin':
+            self.root.attributes('-fullscreen', False)
+            self.root.after(100, lambda: self.root.state('zoomed') if hasattr(self.root, 'state') else None)
+            try:
+                self.root.wm_attributes('-zoomed', True)
+            except Exception:
+                sw = self.root.winfo_screenwidth()
+                sh = self.root.winfo_screenheight()
+                self.root.geometry(f"{sw}x{sh}+0+0")
+        else:
+            try:
+                self.root.attributes('-zoomed', True)
+            except Exception:
+                sw = self.root.winfo_screenwidth()
+                sh = self.root.winfo_screenheight()
+                self.root.geometry(f"{sw}x{sh}+0+0")
         
         self.root.minsize(1200, 800)
         
@@ -305,7 +368,7 @@ class BalMasque:
         self.manual_boxes = []
         self.mode = tk.StringVar(value="auto")
         self.effect_var = tk.StringVar(value="pixelate")
-        self.intensity_var = tk.IntVar(value=20)
+        self.intensity_var = tk.IntVar(value=25)
         self.metadata_enabled = tk.BooleanVar(value=True)
         self.metadata_info = None
         
@@ -487,6 +550,8 @@ Vos images restent sur votre machine."""
         canvas.configure(scrollregion=canvas.bbox('all'))
         
         canvas.bind_all('<MouseWheel>', lambda e: canvas.yview_scroll(int(-1 * (e.delta / 120)), 'units'))
+        canvas.bind_all('<Button-4>', lambda e: canvas.yview_scroll(-3, 'units'))
+        canvas.bind_all('<Button-5>', lambda e: canvas.yview_scroll(3, 'units'))
         
         win.mainloop()
         return accepted[0]
@@ -525,7 +590,7 @@ Vos images restent sur votre machine."""
             tk.Label(content, text="🎭", font=('Segoe UI Emoji', 32), bg=Style.BG, fg=Style.ACCENT).pack()
         
         tk.Label(content, text="Bal Masqué", font=(Style.FONT, 16, 'bold'), bg=Style.BG, fg=Style.TEXT).pack()
-        tk.Label(content, text="v2.0 • Hors-ligne", font=(Style.FONT, 9), bg=Style.BG, fg=Style.TEXT_MUTED).pack(pady=(0, 15))
+        tk.Label(content, text="v2.1 • Hors-ligne", font=(Style.FONT, 9), bg=Style.BG, fg=Style.TEXT_MUTED).pack(pady=(0, 15))
         
         # === SECTION IMAGE ===
         self.create_section(content, "📷 IMAGE")
@@ -879,6 +944,8 @@ Vos images restent sur votre machine."""
                  padx=25, pady=10, command=win.destroy).pack(side='left', padx=10)
         
         canvas.bind_all('<MouseWheel>', lambda e: canvas.yview_scroll(int(-1 * (e.delta / 120)), 'units'))
+        canvas.bind_all('<Button-4>', lambda e: canvas.yview_scroll(-3, 'units'))
+        canvas.bind_all('<Button-5>', lambda e: canvas.yview_scroll(3, 'units'))
     
     def clean_metadata_now(self):
         if not self.image_path:
@@ -991,21 +1058,60 @@ Vos images restent sur votre machine."""
         self.update_status("Détection en cours...")
         self.root.update()
         
-        cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
-        face_cascade = cv2.CascadeClassifier(cascade_path)
-        
         gray = cv2.cvtColor(self.image_original, cv2.COLOR_BGR2GRAY)
         gray = cv2.equalizeHist(gray)
         
-        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
-        self.faces_detected = list(faces) if len(faces) > 0 else []
+        all_faces = []
         
+        # Détection frontale avec plusieurs passes (sensibilité croissante)
+        cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_default.xml'
+        face_cascade = cv2.CascadeClassifier(cascade_path)
+        
+        faces = face_cascade.detectMultiScale(gray, scaleFactor=1.05, minNeighbors=4, minSize=(20, 20))
+        for f in faces:
+            all_faces.append(tuple(f))
+        
+        # Détection frontale alt (autre modèle)
+        alt_cascade_path = cv2.data.haarcascades + 'haarcascade_frontalface_alt2.xml'
+        alt_cascade = cv2.CascadeClassifier(alt_cascade_path)
+        alt_faces = alt_cascade.detectMultiScale(gray, scaleFactor=1.05, minNeighbors=4, minSize=(20, 20))
+        for f in alt_faces:
+            if not any(self._boxes_overlap(tuple(f), existing) for existing in all_faces):
+                all_faces.append(tuple(f))
+        
+        # Détection profils gauche
         profile_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_profileface.xml')
-        profiles = profile_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5, minSize=(30, 30))
-        
+        profiles = profile_cascade.detectMultiScale(gray, scaleFactor=1.05, minNeighbors=4, minSize=(20, 20))
         for p in profiles:
-            if not any(self._boxes_overlap(p, f) for f in self.faces_detected):
-                self.faces_detected.append(tuple(p))
+            if not any(self._boxes_overlap(tuple(p), existing) for existing in all_faces):
+                all_faces.append(tuple(p))
+        
+        # Détection profils droite (image retournée)
+        flipped = cv2.flip(gray, 1)
+        profiles_r = profile_cascade.detectMultiScale(flipped, scaleFactor=1.05, minNeighbors=4, minSize=(20, 20))
+        img_w = gray.shape[1]
+        for (x, y, w, h) in profiles_r:
+            mirrored = (img_w - x - w, y, w, h)
+            if not any(self._boxes_overlap(mirrored, existing) for existing in all_faces):
+                all_faces.append(mirrored)
+        
+        # Élargir les zones détectées de 25% pour couvrir tout le visage
+        expanded = []
+        img_h, img_w_full = self.image_original.shape[:2]
+        for (x, y, w, h) in all_faces:
+            margin_x = int(w * 0.25)
+            margin_y = int(h * 0.25)
+            nx = max(0, x - margin_x)
+            ny = max(0, y - margin_y)
+            nw = min(img_w_full - nx, w + 2 * margin_x)
+            nh = min(img_h - ny, h + 2 * margin_y)
+            expanded.append((nx, ny, nw, nh))
+        
+        # Dédupliquer les zones élargies
+        self.faces_detected = []
+        for box in expanded:
+            if not any(self._boxes_overlap(box, existing, threshold=0.4) for existing in self.faces_detected):
+                self.faces_detected.append(box)
         
         self.update_counter()
         
@@ -1044,12 +1150,19 @@ Vos images restent sur votre machine."""
                 continue
             
             if effect == "pixelate":
-                pixel_size = max(2, intensity // 5)
-                small = cv2.resize(roi, (max(1, w // pixel_size), max(1, h // pixel_size)), interpolation=cv2.INTER_LINEAR)
+                # Pixelisation plus agressive : blocs plus gros
+                pixel_size = max(3, intensity // 3)
+                small_w = max(1, w // pixel_size)
+                small_h = max(1, h // pixel_size)
+                small = cv2.resize(roi, (small_w, small_h), interpolation=cv2.INTER_LINEAR)
                 blurred = cv2.resize(small, (w, h), interpolation=cv2.INTER_NEAREST)
             elif effect == "blur":
-                ksize = intensity * 2 + 1
+                # Double passe de flou gaussien pour effet plus fort
+                ksize = max(3, intensity * 4 + 1)
+                if ksize % 2 == 0:
+                    ksize += 1
                 blurred = cv2.GaussianBlur(roi, (ksize, ksize), 0)
+                blurred = cv2.GaussianBlur(blurred, (ksize, ksize), 0)
             elif effect == "black":
                 blurred = np.zeros_like(roi)
             else:
