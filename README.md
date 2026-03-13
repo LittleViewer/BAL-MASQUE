@@ -2,7 +2,7 @@
 
 **Logiciel libre de floutage de visages et de suppression de métadonnées**
 
-![Version](https://img.shields.io/badge/version-2.0-ff2d55)
+![Version](https://img.shields.io/badge/version-2.1-ff2d55)
 ![Licence](https://img.shields.io/badge/licence-GPL--3.0-00e5a0)
 ![Python](https://img.shields.io/badge/python-3.8+-5cb8ff)
 ![Plateformes](https://img.shields.io/badge/plateformes-Windows%20%7C%20Linux%20%7C%20Mac-blue)
@@ -23,20 +23,24 @@
 ## ✨ Fonctionnalités
 
 ### 🎭 Floutage de visages
-- **Détection automatique** des visages (OpenCV Haar Cascades)
+- **Détection automatique** des visages (OpenCV — 3 classificateurs Haar, détection frontale + profils)
+- **Marges de sécurité** de 25% autour des visages détectés
 - **Mode manuel** pour sélectionner des zones personnalisées
-- **3 effets** : Pixelisation, Flou gaussien, Masque noir
-- **Intensité réglable** (15-99)
+- **3 effets** : Pixelisation, Flou gaussien (double passe), Masque noir
+- **Intensité réglable** (5-50)
 
 ### 🧹 Suppression des métadonnées
 - **Données GPS** : coordonnées, altitude, timestamp
 - **Données EXIF** : appareil photo, paramètres, logiciels
 - **Données d'identification** : numéros de série, identifiants uniques
-- **Analyse de sécurité** : rapport détaillé avant/après nettoyage
+- **Données XMP** : métadonnées étendues embarquées
+- **Profils ICC** : profils couleur pouvant contenir des identifiants
+- **Segments JPEG** : APP1, APP2, APP12, APP13, APP14, COM
+- **Analyse de sécurité** : rapport détaillé avec score de risque (0-100)
 
 ### 💾 Export
-- Formats **PNG/JPEG** haute qualité
-- Option de **compression** configurable
+- Formats **PNG/JPEG/WebP** haute qualité
+- **Suppression automatique** des métadonnées à la sauvegarde
 - **Prévisualisation** en temps réel
 
 ---
@@ -48,9 +52,29 @@
 **Aucune installation requise !**
 
 1. Allez dans **[Releases](../../releases)**
-2. Téléchargez `BalMasque_v2.0_Windows.zip` (ou Linux/Mac)
-3. Décompressez
-4. Double-cliquez sur `BalMasque.exe`
+2. Téléchargez la version correspondant à votre système :
+
+| Plateforme | Fichier |
+|---|---|
+| 🪟 Windows | `BalMasque_Windows.zip` |
+| 🐧 Linux (Ubuntu / Linux Mint) | `BalMasque_Linux.tar.gz` |
+| 🍎 macOS | `BalMasque_Mac.tar.gz` |
+
+**Windows** : Extraire le zip et lancer `BalMasque.exe`
+
+**Linux** :
+```bash
+tar xzf BalMasque_Linux.tar.gz
+chmod +x BalMasque
+./BalMasque
+```
+
+**macOS** :
+```bash
+tar xzf BalMasque_Mac.tar.gz
+chmod +x BalMasque
+./BalMasque
+```
 
 ### Option 2 : Depuis le code source
 
@@ -62,19 +86,23 @@ cd BAL-MASQUE
 # Installer les dépendances
 pip install -r requirements.txt
 
+# Sur Linux (Ubuntu/Mint), installer aussi tkinter :
+# sudo apt-get install python3-tk
+
 # Lancer l'application
 python bal_masque.py
 ```
 
-### Option 3 : Builder vous-même
+### Option 3 : Builder vous-même avec PyInstaller
 
 ```bash
-# Windows
-build_exe.bat
+pip install -r requirements.txt
+pip install pyinstaller
 
-# Linux/Mac
-chmod +x build.sh
-./build.sh
+# Générer l'exécutable
+pyinstaller --onefile --windowed --name "BalMasque" --add-data "logo.png:." bal_masque.py
+
+# L'exécutable sera dans dist/BalMasque
 ```
 
 ---
@@ -161,16 +189,19 @@ Il **ne doit PAS** être utilisé pour :
 
 ```
 BAL-MASQUE/
-├── bal_masque.py          # Code principal
-├── logo_app.png           # Logo de l'application
-├── requirements.txt       # Dépendances Python
-├── build_exe.bat          # Script de build Windows
-├── build.sh               # Script de build Linux/Mac
-├── screenshots/           # Captures d'écran
+├── bal_masque.py              # Code principal
+├── logo.png                   # Logo de l'application
+├── requirements.txt           # Dépendances Python
+├── tests/
+│   └── test_bal_masque.py     # Tests unitaires
+├── .github/
+│   └── workflows/
+│       └── release.yml        # Build & release multi-plateforme
+├── screenshots/               # Captures d'écran
 │   ├── Accueil.png
 │   └── retouches.png
-├── README.md              # Ce fichier
-└── LICENSE                # Licence GPL-3.0
+├── README.md                  # Ce fichier
+└── LICENSE                    # Licence GPL-3.0
 ```
 
 ---

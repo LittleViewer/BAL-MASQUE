@@ -23,8 +23,12 @@ jobs:
             artifact: BalMasque_Linux
             ext: ""
           - os: macos-13
-            name: Mac
-            artifact: BalMasque_Mac
+            name: Mac_Intel
+            artifact: BalMasque_Mac_Intel
+            ext: ""
+          - os: macos-14
+            name: Mac_AppleSilicon
+            artifact: BalMasque_Mac_AppleSilicon
             ext: ""
 
     runs-on: ${{ matrix.os }}
@@ -109,7 +113,8 @@ jobs:
             |---|---|
             | 🪟 Windows | `BalMasque_Windows.zip` |
             | 🐧 Linux (Ubuntu/Mint) | `BalMasque_Linux.tar.gz` |
-            | 🍎 macOS | `BalMasque_Mac.tar.gz` |
+            | 🍎 macOS (Intel) | `BalMasque_Mac_Intel.tar.gz` |
+            | 🍎 macOS (Apple Silicon) | `BalMasque_Mac_AppleSilicon.tar.gz` |
 
             ### Installation
 
