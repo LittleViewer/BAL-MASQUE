@@ -1,0 +1,146 @@
+name: Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: windows-latest
+            name: Windows
+            artifact: BalMasque_Windows
+            ext: .exe
+          - os: ubuntu-22.04
+            name: Linux
+            artifact: BalMasque_Linux
+            ext: ""
+          - os: macos-13
+            name: Mac_Intel
+            artifact: BalMasque_Mac_Intel
+            ext: ""
+          - os: macos-14
+            name: Mac_AppleSilicon
+            artifact: BalMasque_Mac_AppleSilicon
+            ext: ""
+
+    runs-on: ${{ matrix.os }}
+    name: Build ${{ matrix.name }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-tk python3-dev
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+
+      - name: Build with PyInstaller
+        run: |
+          pyinstaller --onefile --windowed --name "BalMasque" --add-data "logo.png:." --icon logo.png bal_masque.py
+        shell: bash
+
+      - name: Prepare artifact (Windows)
+        if: runner.os == 'Windows'
+        run: |
+          mkdir release
+          cp dist/BalMasque.exe release/BalMasque.exe
+          cp README.md release/
+          cp LICENSE release/
+          cd release && 7z a -tzip ../${{ matrix.artifact }}.zip *
+        shell: bash
+
+      - name: Prepare artifact (Linux/Mac)
+        if: runner.os != 'Windows'
+        run: |
+          mkdir release
+          cp dist/BalMasque release/BalMasque
+          chmod +x release/BalMasque
+          cp README.md release/
+          cp LICENSE release/
+          cd release && tar czf ../${{ matrix.artifact }}.tar.gz *
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            ${{ matrix.artifact }}.zip
+            ${{ matrix.artifact }}.tar.gz
+          if-no-files-found: ignore
+
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: "Bal Masqué ${{ github.ref_name }}"
+          body: |
+            ## 🎭 Bal Masqué ${{ github.ref_name }}
+
+            ### Téléchargements
+
+            | Plateforme | Fichier |
+            |---|---|
+            | 🪟 Windows | `BalMasque_Windows.zip` |
+            | 🐧 Linux (Ubuntu/Mint) | `BalMasque_Linux.tar.gz` |
+            | 🍎 macOS (Intel) | `BalMasque_Mac_Intel.tar.gz` |
+            | 🍎 macOS (Apple Silicon) | `BalMasque_Mac_AppleSilicon.tar.gz` |
+
+            ### Installation
+
+            **Windows** : Extraire le zip et lancer `BalMasque.exe`
+
+            **Linux** :
+            ```bash
+            tar xzf BalMasque_Linux.tar.gz
+            chmod +x BalMasque
+            ./BalMasque
+            ```
+
+            **macOS** :
+            ```bash
+            tar xzf BalMasque_Mac.tar.gz
+            chmod +x BalMasque
+            ./BalMasque
+            ```
+
+            ### Depuis les sources
+            ```bash
+            pip install -r requirements.txt
+            python bal_masque.py
+            ```
+          files: |
+            artifacts/**/*.zip
+            artifacts/**/*.tar.gz
+          draft: false
+          prerelease: false
