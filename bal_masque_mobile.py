@@ -1255,7 +1255,7 @@ class BalMasqueMobile(App):
                 os.makedirs(bal_dir, exist_ok=True)
 
                 save_path = os.path.join(bal_dir, filename)
-                shutil.copy2(tmp_path, save_path)
+                shutil.copy(tmp_path, save_path)
 
                 # Notifier le media scanner Android
                 try:
