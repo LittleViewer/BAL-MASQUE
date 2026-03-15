@@ -6,7 +6,7 @@ package.name = balmasque
 package.domain = org.comenottaris
 source.dir = .
 source.include_exts = py,png,jpg,kv,xml
-source.exclude_dirs = tests,.github,screenshots,__pycache__,.git,venv,env,build,dist
+source.exclude_dirs = tests,.github,screenshots,__pycache__,.git,venv,env,build,dist,docs
 version = 2.2
 requirements = python3,kivy==2.3.0,pillow,numpy,opencv
 orientation = portrait
@@ -48,6 +48,9 @@ android.gradle_dependencies = androidx.core:core:1.12.0
 
 # Empêcher la mise en veille pendant le traitement
 android.wakelock = False
+
+# Sécurité : désactiver la sauvegarde cloud (protection vie privée)
+android.allow_backup = False
 
 # Copier les cascades Haar dans l'APK
 android.add_aars =
