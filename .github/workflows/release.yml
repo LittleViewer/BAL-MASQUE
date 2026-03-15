@@ -22,7 +22,7 @@ jobs:
             name: Linux
             artifact: BalMasque_Linux
             ext: ""
-          - os: macos-13
+          - os: macos-15-intel
             name: Mac_Intel
             artifact: BalMasque_Mac_Intel
             ext: ""
@@ -57,7 +57,12 @@ jobs:
 
       - name: Build with PyInstaller
         run: |
-          pyinstaller --onefile --windowed --name "BalMasque" --add-data "logo.png:." --icon logo.png bal_masque.py
+          if [ "$RUNNER_OS" == "Windows" ]; then
+            SEP=";"
+          else
+            SEP=":"
+          fi
+          pyinstaller --onefile --windowed --name "BalMasque" --add-data "logo.png${SEP}." --icon logo.png bal_masque.py
         shell: bash
 
       - name: Prepare artifact (Windows)
@@ -74,8 +79,12 @@ jobs:
         if: runner.os != 'Windows'
         run: |
           mkdir release
-          cp dist/BalMasque release/BalMasque
-          chmod +x release/BalMasque
+          if [ -d "dist/BalMasque.app" ]; then
+            cp -r dist/BalMasque.app release/
+          else
+            cp dist/BalMasque release/BalMasque
+            chmod +x release/BalMasque
+          fi
           cp README.md release/
           cp LICENSE release/
           cd release && tar czf ../${{ matrix.artifact }}.tar.gz *
@@ -120,9 +129,7 @@ jobs:
             libtool \
             pkg-config \
             zlib1g-dev \
-            libncurses5-dev \
-            libncursesw5-dev \
-            libtinfo5 \
+            libncurses-dev \
             cmake \
             libffi-dev \
             libssl-dev \
@@ -206,9 +213,8 @@ jobs:
 
             **macOS** :
             ```bash
-            tar xzf BalMasque_Mac.tar.gz
-            chmod +x BalMasque
-            ./BalMasque
+            tar xzf BalMasque_Mac_Intel.tar.gz
+            open BalMasque.app
             ```
 
             **Android** :
