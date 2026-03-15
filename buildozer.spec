@@ -21,11 +21,11 @@ presplash.filename = logo.png
 
 # ── Android ─────────────────────────────────────────────────────────
 
-# Versions Android (large compatibilité)
+# Versions Android (minapi/ndk_api >= 24 requis pour numpy)
 android.api = 34
-android.minapi = 21
+android.minapi = 24
 android.ndk = 25b
-android.ndk_api = 21
+android.ndk_api = 24
 android.accept_sdk_license = True
 
 # Utiliser la branche develop de p4a pour les correctifs Python 3.11
