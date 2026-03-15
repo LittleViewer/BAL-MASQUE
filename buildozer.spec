@@ -8,7 +8,7 @@ source.dir = .
 source.include_exts = py,png,jpg,kv,xml
 source.exclude_dirs = tests,.github,screenshots,__pycache__,.git,venv,env,build,dist,docs
 version = 2.2
-requirements = python3,kivy==2.3.0,pillow,numpy,opencv,cython,pyjnius
+requirements = python3,kivy==2.3.0,pillow,numpy,opencv,cython==3.0.11,pyjnius==1.6.1
 orientation = portrait
 fullscreen = 0
 
@@ -27,6 +27,10 @@ android.minapi = 21
 android.ndk = 25b
 android.ndk_api = 21
 android.accept_sdk_license = True
+
+# Utiliser la branche develop de p4a pour les correctifs Python 3.11
+# (corrige notamment l'erreur 'undeclared name: long' dans pyjnius)
+p4a.branch = develop
 
 # Architecture : arm64 + arm pour compatibilité large
 android.archs = arm64-v8a, armeabi-v7a

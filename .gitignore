@@ -32,6 +32,10 @@ wheels/
 .buildozer/
 bin/
 
+# Cython generated
+*.c
+!setup.c
+
 # IDEs
 .vscode/
 .idea/
@@ -46,6 +50,8 @@ desktop.ini
 
 # Bal Masqué spécifiques
 release/
+release-android/
+cascades/
 *.zip
 test_images/
 masque_*.png
