@@ -30,8 +30,8 @@ wheels/
 
 # Buildozer / Android
 .buildozer/
-bin/
-!*.apk
+bin/*
+!bin/*.apk
 
 # Cython generated
 *.c
