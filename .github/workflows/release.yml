@@ -89,8 +89,84 @@ jobs:
             ${{ matrix.artifact }}.tar.gz
           if-no-files-found: ignore
 
+  build-android:
+    runs-on: ubuntu-latest
+    name: Build Android APK
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            git \
+            zip \
+            unzip \
+            autoconf \
+            libtool \
+            pkg-config \
+            zlib1g-dev \
+            libncurses5-dev \
+            libncursesw5-dev \
+            libtinfo5 \
+            cmake \
+            libffi-dev \
+            libssl-dev \
+            automake \
+            lld
+
+      - name: Install Buildozer and Cython
+        run: |
+          pip install --upgrade pip
+          pip install buildozer cython virtualenv
+
+      - name: Prepare Haar cascades for Android
+        run: |
+          mkdir -p cascades
+          HAAR_DIR=$(python -c "import cv2; print(cv2.data.haarcascades)" 2>/dev/null || echo "")
+          if [ -z "$HAAR_DIR" ]; then
+            pip install opencv-python-headless
+            HAAR_DIR=$(python -c "import cv2; print(cv2.data.haarcascades)")
+          fi
+          cp "${HAAR_DIR}haarcascade_frontalface_default.xml" cascades/
+          cp "${HAAR_DIR}haarcascade_frontalface_alt2.xml" cascades/
+          cp "${HAAR_DIR}haarcascade_profileface.xml" cascades/
+
+      - name: Build APK with Buildozer
+        run: |
+          buildozer android debug
+        timeout-minutes: 60
+
+      - name: Prepare Android artifact
+        run: |
+          mkdir -p release-android
+          cp bin/*.apk release-android/BalMasque.apk
+          cp README.md release-android/
+          cp LICENSE release-android/
+          cd release-android && zip ../BalMasque_Android.zip *
+
+      - name: Upload Android artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BalMasque_Android
+          path: BalMasque_Android.zip
+
   release:
-    needs: build
+    needs: [build, build-android]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
 
@@ -115,6 +191,7 @@ jobs:
             | 🐧 Linux (Ubuntu/Mint) | `BalMasque_Linux.tar.gz` |
             | 🍎 macOS (Intel) | `BalMasque_Mac_Intel.tar.gz` |
             | 🍎 macOS (Apple Silicon) | `BalMasque_Mac_AppleSilicon.tar.gz` |
+            | 🤖 Android (APK) | `BalMasque_Android.zip` |
 
             ### Installation
 
@@ -133,6 +210,11 @@ jobs:
             chmod +x BalMasque
             ./BalMasque
             ```
+
+            **Android** :
+            1. Extraire `BalMasque_Android.zip`
+            2. Installer `BalMasque.apk` (activer "Sources inconnues" dans les paramètres)
+            3. L'application apparaît dans le menu "Partager avec" pour les images
 
             ### Depuis les sources
             ```bash

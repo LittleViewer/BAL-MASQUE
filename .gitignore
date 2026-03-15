@@ -26,6 +26,11 @@ wheels/
 # PyInstaller
 *.manifest
 *.spec
+!buildozer.spec
+
+# Buildozer / Android
+.buildozer/
+bin/
 
 # IDEs
 .vscode/
