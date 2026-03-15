@@ -137,10 +137,26 @@ jobs:
             libltdl-dev \
             lld
 
-      - name: Install Buildozer and Cython
+      - name: Install build tools and dependencies
         run: |
-          pip install --upgrade pip
-          pip install buildozer cython virtualenv
+          pip install --upgrade pip setuptools wheel
+          pip install buildozer cython==3.0.11 virtualenv
+
+      - name: Pre-build checks
+        run: |
+          echo "── Checking critical source files ──"
+          for f in bal_masque_mobile.py buildozer.spec logo.png intent_filter.xml; do
+            if [ ! -f "$f" ]; then
+              echo "::error::Missing critical file: $f"
+              exit 1
+            fi
+          done
+          echo "── Checking Python 3 syntax ──"
+          python -m py_compile bal_masque_mobile.py
+          echo "── Checking buildozer.spec requirements ──"
+          grep -q 'pyjnius' buildozer.spec || { echo "::error::pyjnius missing from requirements"; exit 1; }
+          grep -q 'cython' buildozer.spec  || { echo "::error::cython missing from requirements"; exit 1; }
+          echo "All pre-build checks passed."
 
       - name: Prepare Haar cascades for Android
         run: |
@@ -150,14 +166,45 @@ jobs:
             pip install opencv-python-headless
             HAAR_DIR=$(python -c "import cv2; print(cv2.data.haarcascades)")
           fi
-          cp "${HAAR_DIR}haarcascade_frontalface_default.xml" cascades/
-          cp "${HAAR_DIR}haarcascade_frontalface_alt2.xml" cascades/
-          cp "${HAAR_DIR}haarcascade_profileface.xml" cascades/
+          for xml in haarcascade_frontalface_default.xml haarcascade_frontalface_alt2.xml haarcascade_profileface.xml; do
+            if [ ! -f "${HAAR_DIR}${xml}" ]; then
+              echo "::error::Missing cascade file: ${xml}"
+              exit 1
+            fi
+            cp "${HAAR_DIR}${xml}" cascades/
+          done
+          echo "Cascades prepared: $(ls cascades/)"
 
       - name: Build APK with Buildozer
         run: |
-          buildozer android debug
-        timeout-minutes: 60
+          buildozer --verbose android debug 2>&1 || {
+            echo "::warning::Initial build failed. Applying Python 3 compatibility patches..."
+            # TODO: Supprimer ce mécanisme de secours lorsque p4a stable
+            # intégrera les correctifs Python 3.11 (long→int) de la branche develop.
+            # Patch pyjnius 'long' type references (Python 2→3)
+            find .buildozer -type f \( -name '*.pxi' -o -name '*.pyx' \) | while read f; do
+              if grep -q 'isinstance.*long' "$f" 2>/dev/null; then
+                echo "  Patching long→int in $f"
+                sed -i 's/isinstance(\([^,]*\), long)/isinstance(\1, int)/g' "$f"
+              fi
+            done
+            # Regenerate .c files from patched Cython sources
+            echo "Regenerating .c files from patched Cython sources..."
+            find .buildozer -type f -name '*.pyx' -exec cython {} \; 2>/dev/null || true
+            echo "Retrying build after patches..."
+            buildozer --verbose android debug
+          }
+        timeout-minutes: 90
+
+      - name: Verify APK was produced
+        run: |
+          APK_COUNT=$(find bin -name '*.apk' 2>/dev/null | wc -l)
+          if [ "$APK_COUNT" -eq 0 ]; then
+            echo "::error::No APK file found in bin/ directory"
+            exit 1
+          fi
+          echo "APK produced successfully:"
+          ls -lh bin/*.apk
 
       - name: Prepare Android artifact
         run: |
@@ -173,8 +220,70 @@ jobs:
           name: BalMasque_Android
           path: BalMasque_Android.zip
 
-  release:
+      - name: Upload build logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v6
+        with:
+          name: buildozer-logs
+          path: |
+            .buildozer/android/platform/**/build.log
+            .buildozer/android/logs/
+          if-no-files-found: ignore
+
+  verify:
     needs: [build, build-android]
+    runs-on: ubuntu-latest
+    name: Verify Artifacts
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: artifacts
+
+      - name: Verify all platform artifacts exist
+        run: |
+          echo "── Artifact verification ──"
+          MISSING=0
+          for artifact in BalMasque_Windows BalMasque_Linux BalMasque_Mac_Intel BalMasque_Mac_AppleSilicon BalMasque_Android; do
+            DIR="artifacts/${artifact}"
+            if [ ! -d "$DIR" ]; then
+              echo "::error::Missing artifact directory: ${artifact}"
+              MISSING=$((MISSING + 1))
+              continue
+            fi
+            FILE_COUNT=$(find "$DIR" -type f \( -name '*.zip' -o -name '*.tar.gz' \) | wc -l)
+            if [ "$FILE_COUNT" -eq 0 ]; then
+              echo "::error::No archive found in ${artifact}"
+              MISSING=$((MISSING + 1))
+            else
+              echo "✓ ${artifact}: $(find "$DIR" -type f \( -name '*.zip' -o -name '*.tar.gz' \) -exec basename {} \;)"
+            fi
+          done
+          if [ "$MISSING" -gt 0 ]; then
+            echo "::error::${MISSING} artifact(s) missing"
+            exit 1
+          fi
+          echo "All artifacts verified."
+
+      - name: Verify Android APK integrity
+        run: |
+          cd artifacts/BalMasque_Android
+          unzip -q BalMasque_Android.zip -d apk_check
+          if [ ! -f apk_check/BalMasque.apk ]; then
+            echo "::error::BalMasque.apk not found inside archive"
+            exit 1
+          fi
+          APK_SIZE=$(stat --printf="%s" apk_check/BalMasque.apk)
+          echo "APK size: ${APK_SIZE} bytes"
+          if [ "$APK_SIZE" -lt 1000000 ]; then
+            echo "::error::APK is suspiciously small (${APK_SIZE} bytes), possibly corrupt"
+            exit 1
+          fi
+          echo "✓ Android APK integrity check passed"
+
+  release:
+    needs: [build, build-android, verify]
     runs-on: ubuntu-latest
     if: startsWith(github.ref, 'refs/tags/v')
 
