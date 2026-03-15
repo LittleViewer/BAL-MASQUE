@@ -178,19 +178,26 @@ jobs:
       - name: Build APK with Buildozer
         run: |
           buildozer --verbose android debug 2>&1 || {
-            echo "::warning::Initial build failed. Applying Python 3 compatibility patches..."
-            # TODO: Supprimer ce mécanisme de secours lorsque p4a stable
-            # intégrera les correctifs Python 3.11 (long→int) de la branche develop.
-            # Patch pyjnius 'long' type references (Python 2→3)
+            echo "::warning::Initial build failed. Applying compatibility patches..."
+
+            # Patch 1: pyjnius 'long' type references (Python 2→3)
+            # TODO: Supprimer lorsque p4a stable intégrera les correctifs Python 3.11.
             find .buildozer -type f \( -name '*.pxi' -o -name '*.pyx' \) | while read f; do
               if grep -q 'isinstance.*long' "$f" 2>/dev/null; then
                 echo "  Patching long→int in $f"
                 sed -i 's/isinstance(\([^,]*\), long)/isinstance(\1, int)/g' "$f"
               fi
             done
-            # Regenerate .c files from patched Cython sources
-            echo "Regenerating .c files from patched Cython sources..."
             find .buildozer -type f -name '*.pyx' -exec cython {} \; 2>/dev/null || true
+
+            # Patch 2: numpy C++ missing <unordered_map> header (NDK r25b)
+            find .buildozer -type f -name 'unique.cpp' -path '*/numpy/*' | while read f; do
+              if grep -q 'unordered_map' "$f" 2>/dev/null && ! grep -q '#include <unordered_map>' "$f" 2>/dev/null; then
+                echo "  Patching missing #include <unordered_map> in $f"
+                sed -i '1i #include <unordered_map>' "$f"
+              fi
+            done
+
             echo "Retrying build after patches..."
             buildozer --verbose android debug
           }
