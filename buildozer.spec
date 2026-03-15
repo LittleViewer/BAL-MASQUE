@@ -8,7 +8,7 @@ source.dir = .
 source.include_exts = py,png,jpg,kv,xml
 source.exclude_dirs = tests,.github,screenshots,__pycache__,.git,venv,env,build,dist,docs
 version = 2.2
-requirements = python3,kivy==2.3.0,pillow,numpy,opencv
+requirements = python3,kivy==2.3.0,pillow,numpy,opencv,cython,pyjnius
 orientation = portrait
 fullscreen = 0
 
