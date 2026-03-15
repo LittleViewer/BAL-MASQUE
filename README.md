@@ -2,10 +2,10 @@
 
 **Logiciel libre de floutage de visages et de suppression de métadonnées**
 
-![Version](https://img.shields.io/badge/version-2.1-ff2d55)
+![Version](https://img.shields.io/badge/version-2.2-ff2d55)
 ![Licence](https://img.shields.io/badge/licence-GPL--3.0-00e5a0)
 ![Python](https://img.shields.io/badge/python-3.8+-5cb8ff)
-![Plateformes](https://img.shields.io/badge/plateformes-Windows%20%7C%20Linux%20%7C%20Mac-blue)
+![Plateformes](https://img.shields.io/badge/plateformes-Windows%20%7C%20Linux%20%7C%20Mac%20%7C%20Android-blue)
 
 ---
 
@@ -43,6 +43,13 @@
 - **Suppression automatique** des métadonnées à la sauvegarde
 - **Prévisualisation** en temps réel
 
+### 📱 Version mobile (Android)
+- **Application autonome** ou **extension de partage** (bouton « Partager avec »)
+- Interface tactile adaptée aux smartphones
+- Compatible **Android 5.0+** (API 21 à 34)
+- **Sauvegarde** dans le dossier Pictures/BalMasque
+- **Partage** direct de l'image traitée
+
 ---
 
 ## 📥 Installation
@@ -59,6 +66,7 @@
 | 🪟 Windows | `BalMasque_Windows.zip` |
 | 🐧 Linux (Ubuntu / Linux Mint) | `BalMasque_Linux.tar.gz` |
 | 🍎 macOS | `BalMasque_Mac.tar.gz` |
+| 🤖 Android | `BalMasque_Android.zip` |
 
 **Windows** : Extraire le zip et lancer `BalMasque.exe`
 
@@ -75,6 +83,12 @@ tar xzf BalMasque_Mac.tar.gz
 chmod +x BalMasque
 ./BalMasque
 ```
+
+**Android** :
+1. Extraire `BalMasque_Android.zip`
+2. Installer `BalMasque.apk` (activer « Sources inconnues » dans Paramètres > Sécurité)
+3. Ouvrir l'application directement **ou** partager une image depuis la galerie avec le bouton « Partager avec »
+4. Compatible Android 5.0 (Lollipop) et supérieur
 
 ### Option 2 : Depuis le code source
 
@@ -180,8 +194,10 @@ Il **ne doit PAS** être utilisé pour :
 - **Python 3.8+**
 - **OpenCV** - Détection de visages
 - **Pillow** - Manipulation d'images et métadonnées EXIF
-- **Tkinter** - Interface graphique
+- **Tkinter** - Interface graphique (version desktop)
+- **Kivy** - Interface graphique (version mobile Android)
 - **NumPy** - Traitement matriciel
+- **Buildozer** - Compilation APK Android
 
 ---
 
@@ -189,14 +205,18 @@ Il **ne doit PAS** être utilisé pour :
 
 ```
 BAL-MASQUE/
-├── bal_masque.py              # Code principal
+├── bal_masque.py              # Code principal (desktop)
+├── bal_masque_mobile.py       # Version mobile Android (Kivy)
+├── buildozer.spec             # Configuration build Android
+├── intent_filter.xml          # Filtre d'intent Android (partage)
 ├── logo.png                   # Logo de l'application
-├── requirements.txt           # Dépendances Python
+├── requirements.txt           # Dépendances Python (desktop)
+├── requirements-mobile.txt    # Dépendances Python (mobile)
 ├── tests/
 │   └── test_bal_masque.py     # Tests unitaires
 ├── .github/
 │   └── workflows/
-│       └── release.yml        # Build & release multi-plateforme
+│       └── release.yml        # Build & release multi-plateforme + APK
 ├── screenshots/               # Captures d'écran
 │   ├── Accueil.png
 │   └── retouches.png

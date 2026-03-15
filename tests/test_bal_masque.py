@@ -252,5 +252,120 @@ class TestCrossPlatform(unittest.TestCase):
         shutil.rmtree(tmpdir, ignore_errors=True)
 
 
+class TestMobileMetadataManager(unittest.TestCase):
+    """Tests pour MetadataManagerMobile (version Android)"""
+
+    def setUp(self):
+        self.tmpdir = tempfile.mkdtemp()
+
+    def _create_jpeg_with_exif(self, path):
+        img = Image.new('RGB', (100, 100), color='red')
+        img.save(path, 'JPEG', quality=95)
+        with open(path, 'rb') as f:
+            data = f.read()
+        fake_exif = b'Exif\x00\x00mobile@example.com device-serial-99'
+        segment = b'\xff\xe1' + struct.pack('>H', len(fake_exif) + 2) + fake_exif
+        data = data[:2] + segment + data[2:]
+        with open(path, 'wb') as f:
+            f.write(data)
+
+    def test_mobile_metadata_removal(self):
+        """Vérifie que MetadataManagerMobile supprime les métadonnées"""
+        from bal_masque_mobile import MetadataManagerMobile
+
+        path = os.path.join(self.tmpdir, 'mobile_test.jpg')
+        self._create_jpeg_with_exif(path)
+
+        with open(path, 'rb') as f:
+            raw = f.read()
+        self.assertIn(b'mobile@example.com', raw)
+
+        result = MetadataManagerMobile.remove_all_metadata(path)
+        self.assertTrue(result['success'])
+
+        with open(path, 'rb') as f:
+            cleaned = f.read()
+        self.assertNotIn(b'mobile@example.com', cleaned)
+        self.assertNotIn(b'device-serial-99', cleaned)
+
+    def test_mobile_metadata_analysis(self):
+        """Vérifie l'analyse de risque sur la version mobile"""
+        from bal_masque_mobile import MetadataManagerMobile
+
+        path = os.path.join(self.tmpdir, 'clean.jpg')
+        img = Image.new('RGB', (50, 50), color='blue')
+        img.save(path, 'JPEG')
+
+        result = MetadataManagerMobile.get_all_metadata(path)
+        self.assertEqual(result['risk_score'], 0)
+        self.assertEqual(len(result['sensibles']), 0)
+        self.assertIn('file_info', result)
+
+    def test_mobile_sensitive_tags_match_desktop(self):
+        """Vérifie que les tags sensibles mobiles correspondent au desktop"""
+        from bal_masque_mobile import MetadataManagerMobile
+
+        self.assertEqual(
+            set(MetadataManagerMobile.SENSITIVE_TAGS.keys()),
+            set(MetadataManager.SENSITIVE_TAGS.keys()),
+            "Les tags sensibles mobiles doivent correspondre au desktop"
+        )
+
+    def tearDown(self):
+        import shutil
+        shutil.rmtree(self.tmpdir, ignore_errors=True)
+
+
+class TestSecureCleanup(unittest.TestCase):
+    """Tests pour le nettoyage sécurisé des fichiers temporaires"""
+
+    def test_secure_delete_file(self):
+        """Vérifie que les fichiers sont écrasés avant suppression"""
+        from bal_masque_mobile import _secure_delete_file
+
+        tmpdir = tempfile.mkdtemp()
+        path = os.path.join(tmpdir, 'secret.txt')
+        with open(path, 'w') as f:
+            f.write('données sensibles GPS 48.8566 2.3522')
+        self.assertTrue(os.path.exists(path))
+
+        _secure_delete_file(path)
+        self.assertFalse(os.path.exists(path))
+
+        import shutil
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+    def test_secure_delete_dir(self):
+        """Vérifie la suppression récursive sécurisée"""
+        from bal_masque_mobile import _secure_delete_dir
+
+        tmpdir = tempfile.mkdtemp(prefix='balmasque_test_')
+        subdir = os.path.join(tmpdir, 'sub')
+        os.makedirs(subdir)
+        for name in ['a.jpg', 'b.png']:
+            with open(os.path.join(subdir, name), 'wb') as f:
+                f.write(b'\xff' * 1024)
+        with open(os.path.join(tmpdir, 'root.dat'), 'wb') as f:
+            f.write(b'\xaa' * 512)
+
+        self.assertTrue(os.path.isdir(tmpdir))
+        _secure_delete_dir(tmpdir)
+        self.assertFalse(os.path.exists(tmpdir))
+
+    def test_secure_delete_nonexistent(self):
+        """Vérifie que la suppression d'un fichier inexistant ne plante pas"""
+        from bal_masque_mobile import _secure_delete_file, _secure_delete_dir
+
+        _secure_delete_file('/tmp/does_not_exist_12345.txt')
+        _secure_delete_dir('/tmp/does_not_exist_dir_12345/')
+
+    def test_mobile_version_matches_desktop(self):
+        """Vérifie que la version mobile correspond au desktop"""
+        from bal_masque_mobile import BalMasqueMobile
+        from bal_masque import BalMasque
+
+        self.assertEqual(BalMasqueMobile.VERSION, BalMasque.VERSION)
+
+
 if __name__ == '__main__':
     unittest.main()
