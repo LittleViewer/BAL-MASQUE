@@ -179,6 +179,8 @@ jobs:
         run: |
           buildozer --verbose android debug 2>&1 || {
             echo "::warning::Initial build failed. Applying Python 3 compatibility patches..."
+            # TODO: Supprimer ce mécanisme de secours lorsque p4a stable
+            # intégrera les correctifs Python 3.11 (long→int) de la branche develop.
             # Patch pyjnius 'long' type references (Python 2→3)
             find .buildozer -type f \( -name '*.pxi' -o -name '*.pyx' \) | while read f; do
               if grep -q 'isinstance.*long' "$f" 2>/dev/null; then
