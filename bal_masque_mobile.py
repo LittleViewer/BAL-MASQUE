@@ -1201,38 +1201,83 @@ class BalMasqueMobile(App):
         self._update_step(4)
 
     def _save_android(self, filename):
-        """Sauvegarde sur Android (dans Pictures ou via partage)"""
+        """Sauvegarde sur Android avec compatibilité scoped storage"""
         try:
             from jnius import autoclass
-            Environment = autoclass('android.os.Environment')
 
-            pictures_dir = Environment.getExternalStoragePublicDirectory(
-                Environment.DIRECTORY_PICTURES
-            ).getAbsolutePath()
+            PythonActivity = autoclass('org.kivy.android.PythonActivity')
+            context = PythonActivity.mActivity
+            Build_VERSION = autoclass('android.os.Build$VERSION')
+            sdk_int = Build_VERSION.SDK_INT
 
-            bal_dir = os.path.join(pictures_dir, 'BalMasque')
-            os.makedirs(bal_dir, exist_ok=True)
+            # Sauvegarder en fichier temporaire et nettoyer les métadonnées
+            tmp_path = os.path.join(tempfile.gettempdir(), filename)
+            cv2.imwrite(tmp_path, self.image_processed)
+            MetadataManagerMobile.remove_all_metadata(tmp_path)
 
-            save_path = os.path.join(bal_dir, filename)
-            cv2.imwrite(save_path, self.image_processed)
+            if sdk_int >= 29:
+                # Android 10+ : utiliser MediaStore (scoped storage)
+                ContentValues = autoclass('android.content.ContentValues')
+                MediaStoreImages = autoclass(
+                    'android.provider.MediaStore$Images$Media'
+                )
+                FileInputStream = autoclass('java.io.FileInputStream')
 
-            MetadataManagerMobile.remove_all_metadata(save_path)
+                values = ContentValues()
+                values.put("_display_name", filename)
+                values.put("mime_type", "image/png")
+                values.put("relative_path", "Pictures/BalMasque")
 
-            # Notifier le media scanner Android
+                resolver = context.getContentResolver()
+                uri = resolver.insert(
+                    MediaStoreImages.EXTERNAL_CONTENT_URI, values
+                )
+
+                if uri:
+                    out_stream = resolver.openOutputStream(uri)
+                    fis = FileInputStream(tmp_path)
+                    buf = bytearray(8192)
+                    while True:
+                        n = fis.read(buf)
+                        if n == -1:
+                            break
+                        out_stream.write(buf, 0, n)
+                    fis.close()
+                    out_stream.close()
+            else:
+                # Android 9 et inférieur : stockage legacy
+                Environment = autoclass('android.os.Environment')
+                pictures_dir = Environment.getExternalStoragePublicDirectory(
+                    Environment.DIRECTORY_PICTURES
+                ).getAbsolutePath()
+
+                bal_dir = os.path.join(pictures_dir, 'BalMasque')
+                os.makedirs(bal_dir, exist_ok=True)
+
+                save_path = os.path.join(bal_dir, filename)
+                shutil.copy(tmp_path, save_path)
+
+                # Notifier le media scanner Android
+                try:
+                    MediaScannerConnection = autoclass(
+                        'android.media.MediaScannerConnection'
+                    )
+                    MediaScannerConnection.scanFile(
+                        context, [save_path], None, None
+                    )
+                except Exception:
+                    pass
+
+                self._offer_share(save_path)
+
+            # Nettoyer le fichier temporaire
             try:
-                PythonActivity = autoclass('org.kivy.android.PythonActivity')
-                MediaScannerConnection = autoclass(
-                    'android.media.MediaScannerConnection'
-                )
-                context = PythonActivity.mActivity
-                MediaScannerConnection.scanFile(
-                    context, [save_path], None, None
-                )
-            except Exception:
+                if os.path.exists(tmp_path):
+                    os.remove(tmp_path)
+            except OSError:
                 pass
 
-            self._set_status(f'✅ Sauvegardé dans Pictures/BalMasque/')
-            self._offer_share(save_path)
+            self._set_status('✅ Sauvegardé dans Pictures/BalMasque/')
 
         except Exception as e:
             self._set_status(f'Erreur sauvegarde : {e}')
