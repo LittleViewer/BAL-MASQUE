@@ -57,43 +57,14 @@
 
 ## Telecharger
 
-### Option 1 : Telecharger l'executable (recommande)
+### Option 1 : Installer l'APK Android (recommande)
 
-**Aucune installation requise !**
-
-1. Allez dans **[Releases](../../releases)**
-2. Telechargez la version correspondant a votre systeme :
-
-| Plateforme | Fichier |
-|---|---|
-| Windows | `BalMasque_Windows.zip` |
-| Linux (Ubuntu / Linux Mint) | `BalMasque_Linux.tar.gz` |
-| macOS (Intel) | `BalMasque_Mac_Intel.tar.gz` |
-| macOS (Apple Silicon) | `BalMasque_Mac_AppleSilicon.tar.gz` |
-| Android | `BalMasque_Android.zip` |
-
-**Windows** : Extraire le zip et lancer `BalMasque.exe`
-
-**Linux** :
-```bash
-tar xzf BalMasque_Linux.tar.gz
-chmod +x BalMasque
-./BalMasque
-```
-
-**macOS** :
-```bash
-tar xzf BalMasque_Mac_Intel.tar.gz    # ou BalMasque_Mac_AppleSilicon.tar.gz
-open BalMasque.app
-```
-
-**Android** :
-1. Extraire `BalMasque_Android.zip`
-2. Installer `BalMasque.apk` (activer "Sources inconnues" dans Parametres > Securite)
+1. Telechargez `BalMasque.apk` depuis **[Releases](../../releases)** ou directement dans le depot
+2. Installer le fichier APK (activer "Sources inconnues" dans Parametres > Securite)
 3. Ouvrir l'application directement **ou** partager une image depuis la galerie avec le bouton "Partager avec"
 4. Compatible Android 5.0 (Lollipop) et superieur
 
-### Option 2 : Depuis le code source
+### Option 2 : Depuis le code source (desktop)
 
 ```bash
 # Cloner le repo
@@ -110,7 +81,7 @@ pip install -r requirements.txt
 python bal_masque.py
 ```
 
-### Option 3 : Builder vous-meme avec PyInstaller
+### Option 3 : Builder vous-meme avec PyInstaller (desktop)
 
 ```bash
 pip install -r requirements.txt
@@ -120,6 +91,34 @@ pip install pyinstaller
 pyinstaller --onefile --windowed --name "BalMasque" --add-data "logo.png:." bal_masque.py
 
 # L'executable sera dans dist/BalMasque
+```
+
+### Option 4 : Builder l'APK Android avec Buildozer
+
+```bash
+# Installer les dependances systeme (Ubuntu/Debian)
+sudo apt-get install -y build-essential git zip unzip autoconf libtool \
+  pkg-config zlib1g-dev libncurses-dev cmake libffi-dev libssl-dev \
+  automake libltdl-dev lld openjdk-17-jdk
+
+# Installer Buildozer
+pip install buildozer cython==0.29.36 virtualenv
+
+# Preparer les cascades Haar pour la detection de visages
+mkdir -p cascades
+pip install opencv-python-headless
+python -c "
+import cv2, shutil, os
+src = cv2.data.haarcascades
+for f in ['haarcascade_frontalface_default.xml', 'haarcascade_frontalface_alt2.xml', 'haarcascade_profileface.xml']:
+    shutil.copy(os.path.join(src, f), 'cascades/')
+"
+
+# Builder l'APK (premiere execution longue : ~30-60 min)
+buildozer android debug
+
+# L'APK sera dans bin/
+ls bin/*.apk
 ```
 
 ---
@@ -219,9 +218,6 @@ BAL-MASQUE/
 |-- tests/
 |   +-- test_bal_masque.py     # Tests unitaires
 |-- docs/                      # Documentation et wiki
-|-- .github/
-|   +-- workflows/
-|       +-- release.yml        # Build & release multi-plateforme + APK
 |-- screenshots/               # Captures d'ecran
 |   |-- Accueil.png
 |   +-- retouches.png
