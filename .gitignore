@@ -57,3 +57,4 @@ cascades/
 test_images/
 masque_*.png
 masque_*.jpg
+.pytest_cache/

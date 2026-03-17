@@ -2,10 +2,13 @@
 
 **Logiciel libre de floutage de visages et de suppression de metadonnees**
 
-![Version](https://img.shields.io/badge/version-2.2-ff2d55)
+![Version](https://img.shields.io/badge/version-2.1-ff2d55)
 ![Licence](https://img.shields.io/badge/licence-GPL--3.0-00e5a0)
 ![Python](https://img.shields.io/badge/python-3.8+-5cb8ff)
-![Plateformes](https://img.shields.io/badge/plateformes-Windows%20%7C%20Linux%20%7C%20Mac%20%7C%20Android-blue)
+![Plateformes](https://img.shields.io/badge/plateformes-Windows%20%7C%20Linux%20%7C%20Mac-blue)
+
+> **⚠️ Version Android (APK) :** La version mobile Android est **en cours de developpement** et n'est **pas encore disponible** au telechargement.
+> Seules les versions **Linux**, **Windows** et **macOS** sont pretes. Voir la section [Telecharger](#telecharger) ci-dessous.
 
 ---
 
@@ -43,7 +46,7 @@
 - **Suppression automatique** des metadonnees a la sauvegarde
 - **Previsualisation** en temps reel
 
-### Version mobile (Android)
+### Version mobile (Android) — en cours de developpement
 - **Application autonome** ou **extension de partage** (bouton "Partager avec")
 - Interface tactile adaptee aux smartphones
 - Compatible **Android 5.0+** (API 21 a 34)
@@ -53,16 +56,27 @@
 - **Aucune permission internet** : 100% hors-ligne, aucune donnee transmise
 - **Nettoyage securise** : les fichiers temporaires sont ecrases avec des zeros avant suppression
 
+> *La version Android n'est pas encore disponible au telechargement. Suivez le projet pour etre informe de sa sortie.*
+
 ---
 
 ## Telecharger
 
-### Option 1 : Installer l'APK Android (recommande)
+### Option 1 : Telechargement direct depuis les Releases (recommande)
 
-1. Telechargez `BalMasque.apk` depuis **[Releases](../../releases)** ou directement dans le depot
-2. Installer le fichier APK (activer "Sources inconnues" dans Parametres > Securite)
-3. Ouvrir l'application directement **ou** partager une image depuis la galerie avec le bouton "Partager avec"
-4. Compatible Android 5.0 (Lollipop) et superieur
+Rendez-vous sur la page **[Releases](../../releases/tag/v2.1)** du projet.
+
+Les fichiers sont disponibles **directement** (sans zip) :
+
+| Plateforme | Fichier a telecharger | Installation |
+|------------|----------------------|--------------|
+| 🐧 **Linux** | `BalMasque-Linux` | Telecharger, puis dans un terminal : `chmod +x BalMasque-Linux` et `./BalMasque-Linux` |
+| 🪟 **Windows** | `BalMasque.exe` | Telecharger, puis double-cliquer pour lancer |
+| 🍎 **macOS** | `BalMasque-macOS` | Telecharger, puis dans un terminal : `chmod +x BalMasque-macOS` et `./BalMasque-macOS` |
+
+> **macOS** : Au premier lancement, faites clic droit → Ouvrir, ou autorisez l'application dans Preferences Systeme → Securite et confidentialite.
+
+> **⚠️ Android** : La version APK n'est pas encore disponible. Elle est en cours de developpement.
 
 ### Option 2 : Depuis le code source (desktop)
 

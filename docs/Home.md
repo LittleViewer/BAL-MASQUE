@@ -20,9 +20,7 @@ Bal Masqué is a **privacy-first face anonymisation and metadata removal tool**.
 | 🐧 Linux | Python / Tkinter / PyInstaller | ✅ Supported |
 | 🍎 macOS (Intel) | Python / Tkinter / PyInstaller | ✅ Supported |
 | 🍎 macOS (Apple Silicon) | Python / Tkinter / PyInstaller | ✅ Supported |
-| 🤖 Android (5.0+) | Python / Kivy / Buildozer | ✅ Supported |
-
-### Features
+| 🤖 Android (5.0+) | Python / Kivy / Buildozer | ⏳ In development |
 
 - **Automatic face detection** using OpenCV Haar cascades (3 classifiers: frontal, alternative, profile)
 - **3 blur effects**: Pixelisation, Gaussian blur, Black mask
@@ -36,12 +34,19 @@ Bal Masqué is a **privacy-first face anonymisation and metadata removal tool**.
 
 #### From release (recommended)
 
-Download the latest release from the [Releases page](https://github.com/comenottaris/BAL-MASQUE/releases):
+Download the latest release from the [Releases page](https://github.com/comenottaris/BAL-MASQUE/releases/tag/v2.1).
 
-- **Windows**: Extract the ZIP and run `BalMasque.exe`
-- **Linux**: Extract the tarball, `chmod +x BalMasque`, then run `./BalMasque`
-- **macOS**: Extract the tarball, then `open BalMasque.app`
-- **Android**: Extract the ZIP, enable "Unknown sources" in Settings, install the APK
+Files are available **directly** (no zip needed):
+
+| Platform | File | Instructions |
+|----------|------|-------------|
+| 🐧 **Linux** | `BalMasque-Linux` | Download, then `chmod +x BalMasque-Linux` and `./BalMasque-Linux` |
+| 🪟 **Windows** | `BalMasque.exe` | Download and double-click to run |
+| 🍎 **macOS** | `BalMasque-macOS` | Download, then `chmod +x BalMasque-macOS` and `./BalMasque-macOS` |
+
+> **macOS**: On first launch, right-click → Open, or allow the app in System Preferences → Security & Privacy.
+
+> ⚠️ **Android**: The APK is not yet available. It is under development.
 
 #### From source
 
@@ -122,7 +127,7 @@ Bal Masqué est un **outil militant d'anonymisation des visages et de suppressio
 | 🐧 Linux | Python / Tkinter / PyInstaller | ✅ Supporté |
 | 🍎 macOS (Intel) | Python / Tkinter / PyInstaller | ✅ Supporté |
 | 🍎 macOS (Apple Silicon) | Python / Tkinter / PyInstaller | ✅ Supporté |
-| 🤖 Android (5.0+) | Python / Kivy / Buildozer | ✅ Supporté |
+| 🤖 Android (5.0+) | Python / Kivy / Buildozer | ⏳ En développement |
 
 ### Fonctionnalités
 
@@ -138,12 +143,19 @@ Bal Masqué est un **outil militant d'anonymisation des visages et de suppressio
 
 #### Depuis les releases (recommandé)
 
-Téléchargez la dernière version depuis la [page des Releases](https://github.com/comenottaris/BAL-MASQUE/releases) :
+Téléchargez la dernière version depuis la [page des Releases](https://github.com/comenottaris/BAL-MASQUE/releases/tag/v2.1).
 
-- **Windows** : Extraire le ZIP et lancer `BalMasque.exe`
-- **Linux** : Extraire l'archive, `chmod +x BalMasque`, puis `./BalMasque`
-- **macOS** : Extraire l'archive, puis `open BalMasque.app`
-- **Android** : Extraire le ZIP, activer « Sources inconnues » dans les paramètres, installer l'APK
+Les fichiers sont disponibles **directement** (sans zip) :
+
+| Plateforme | Fichier | Installation |
+|------------|---------|-------------|
+| 🐧 **Linux** | `BalMasque-Linux` | Télécharger, puis `chmod +x BalMasque-Linux` et `./BalMasque-Linux` |
+| 🪟 **Windows** | `BalMasque.exe` | Télécharger et double-cliquer pour lancer |
+| 🍎 **macOS** | `BalMasque-macOS` | Télécharger, puis `chmod +x BalMasque-macOS` et `./BalMasque-macOS` |
+
+> **macOS** : Au premier lancement, faites clic droit → Ouvrir, ou autorisez l'application dans Préférences Système → Sécurité et confidentialité.
+
+> ⚠️ **Android** : L'APK n'est pas encore disponible. La version mobile est en cours de développement.
 
 #### Depuis les sources
 

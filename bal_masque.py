@@ -323,7 +323,7 @@ class MetadataManager:
 class BalMasque:
     """Application principale"""
     
-    VERSION = "2.2"
+    VERSION = "2.1"
     
     def __init__(self):
         # D'abord le disclaimer
